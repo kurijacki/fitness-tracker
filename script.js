@@ -859,7 +859,7 @@ async function saveFirebaseConfig() {
   const config = {
     apiKey: apiKey,
     authDomain: `${projectId}.firebaseapp.com`,
-    databaseURL: `https://${projectId}-default-rtdb.firebaseio.com`,
+    databaseURL: `https://${projectId}-default-rtdb.europe-west1.firebasedatabase.app`,
     projectId: projectId,
     storageBucket: `${projectId}.appspot.com`,
     messagingSenderId: "000000000000",
@@ -1040,3 +1040,4 @@ openSettingsModal = function () {
     updateFirebaseStatus();
   }, 100);
 };
+
