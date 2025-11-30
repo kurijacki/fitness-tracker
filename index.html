@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="sr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kurijački-s Fitnes Tracker</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@700&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  </head>
+  <body>
+    <!-- Header -->
+    <header class="header">
+      <div class="header-content">
+        <h1 class="logo">Kurijački-s Trening</h1>
+        <nav class="nav-tabs">
+          <button class="nav-btn active" data-view="monthly">Mesečni</button>
+          <button class="nav-btn" data-view="weekly">Nedeljni</button>
+          <button class="nav-btn" data-view="daily">Dnevni</button>
+        </nav>
+        <div class="header-actions">
+          <button class="action-btn" id="printBtn" aria-label="Štampaj">
+            <span>🖨️</span> Štampaj
+          </button>
+          <button class="action-btn" id="settingsBtn" aria-label="Podešavanja">
+            <span>⚙️</span> Podešavanja
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Calendar Container -->
+      <section class="calendar-section">
+        <div class="calendar-header">
+          <button class="nav-arrow" id="prevBtn" aria-label="Prethodni period">
+            ‹
+          </button>
+          <h2 class="period-title" id="periodTitle"></h2>
+          <button class="nav-arrow" id="nextBtn" aria-label="Sledeći period">
+            ›
+          </button>
+        </div>
+        <div class="calendar-container" id="calendarContainer"></div>
+      </section>
+
+      <!-- Chart Section -->
+      <section class="chart-section">
+        <h3 class="chart-title">Grafikon Napretka</h3>
+        <div class="chart-wrapper">
+          <canvas id="progressChart"></canvas>
+        </div>
+      </section>
+    </main>
+
+    <!-- Modal za unos podataka -->
+    <div class="modal" id="entryModal">
+      <div class="modal-content">
+        <span class="modal-close" id="closeModal">&times;</span>
+        <h2 class="modal-title">Unos Podataka</h2>
+        <form id="entryForm">
+          <div class="form-group">
+            <label for="entryDate">Datum:</label>
+            <input type="date" id="entryDate" readonly required />
+          </div>
+          <div class="form-group">
+            <label for="entryWeight">Kilaža (kg):</label>
+            <input
+              type="number"
+              id="entryWeight"
+              step="0.1"
+              min="0"
+              placeholder="npr. 82.5"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="entryDuration">Trajanje treninga (minuti):</label>
+            <input
+              type="number"
+              id="entryDuration"
+              min="0"
+              placeholder="npr. 60"
+              required
+            />
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Sačuvaj</button>
+            <button type="button" class="btn btn-secondary" id="cancelBtn">
+              Otkaži
+            </button>
+            <button type="button" class="btn btn-danger" id="deleteBtn">
+              Obriši unos
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal za podešavanja -->
+    <div class="modal" id="settingsModal">
+      <div class="modal-content">
+        <span class="modal-close" id="closeSettingsModal">&times;</span>
+        <h2 class="modal-title">Podešavanja</h2>
+
+        <!-- Goal Tracking -->
+        <div class="settings-section">
+          <h3>Goal Tracking</h3>
+          <div class="form-group">
+            <label for="targetDate">Datum cilja:</label>
+            <input type="date" id="targetDate" />
+          </div>
+          <div class="form-group">
+            <label for="targetWeight">Ciljna kilaža (kg):</label>
+            <input
+              type="number"
+              id="targetWeight"
+              step="0.1"
+              min="0"
+              placeholder="npr. 75"
+            />
+          </div>
+          <div class="form-group">
+            <label for="monthlyHours">Cilj za mesečne sate treninga:</label>
+            <input
+              type="number"
+              id="monthlyHours"
+              min="0"
+              step="0.5"
+              placeholder="npr. 20"
+            />
+          </div>
+          <button type="button" class="btn btn-primary" id="saveGoalsBtn">
+            Sačuvaj ciljeve
+          </button>
+        </div>
+
+        <!-- Data Management -->
+        <div class="settings-section">
+          <h3>Upravljanje Podacima</h3>
+          <div class="data-actions">
+            <button type="button" class="btn btn-secondary" id="exportBtn">
+              Preuzmi podatke (JSON)
+            </button>
+            <input
+              type="file"
+              id="importFile"
+              accept=".json"
+              style="display: none"
+            />
+            <button type="button" class="btn btn-secondary" id="importBtn">
+              Učitaj podatke (JSON)
+            </button>
+            <button type="button" class="btn btn-danger" id="clearAllBtn">
+              Obriši sve podatke
+            </button>
+          </div>
+        </div>
+
+        <!-- Info -->
+        <div class="settings-section">
+          <p class="info-text">ℹ️ Podaci se automatski čuvaju u browseru</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
