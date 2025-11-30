@@ -33,6 +33,8 @@ const importBtn = document.getElementById("importBtn");
 const importFile = document.getElementById("importFile");
 const clearAllBtn = document.getElementById("clearAllBtn");
 const saveGoalsBtn = document.getElementById("saveGoalsBtn");
+const saveFirebaseBtn = document.getElementById("saveFirebaseBtn");
+const syncFirebaseBtn = document.getElementById("syncFirebaseBtn");
 
 // Initialize
 document.addEventListener("DOMContentLoaded", () => {
@@ -70,6 +72,8 @@ function setupEventListeners() {
 
   // Settings
   saveGoalsBtn.addEventListener("click", saveGoals);
+  saveFirebaseBtn.addEventListener("click", saveFirebaseConfig);
+  syncFirebaseBtn.addEventListener("click", syncWithFirebase);
   exportBtn.addEventListener("click", exportJSON);
   importBtn.addEventListener("click", () => importFile.click());
   importFile.addEventListener("change", importJSON);
@@ -99,6 +103,8 @@ function setupEventListeners() {
 function saveData() {
   try {
     localStorage.setItem("fitnessTrackerData", JSON.stringify(appData));
+    // Takođe sačuvaj u Firebase ako je konfigurisan
+    saveToFirebase();
     showToast("Podaci sačuvani", "success");
   } catch (error) {
     console.error("Greška pri čuvanju:", error);
@@ -108,25 +114,30 @@ function saveData() {
 
 function loadData() {
   try {
+    // Prvo učitaj iz LocalStorage
     const saved = localStorage.getItem("fitnessTrackerData");
     if (saved) {
       appData = JSON.parse(saved);
-      // Load goals into settings form
-      if (appData.goals.targetDate) {
-        document.getElementById("targetDate").value = appData.goals.targetDate;
-      }
-      if (appData.goals.targetWeight) {
-        document.getElementById("targetWeight").value =
-          appData.goals.targetWeight;
-      }
-      if (appData.goals.monthlyHours) {
-        document.getElementById("monthlyHours").value =
-          appData.goals.monthlyHours;
-      }
+      loadGoalsIntoForm();
     }
+
+    // Zatim pokušaj da učitam iz Firebase ako je konfigurisan
+    loadFromFirebase();
   } catch (error) {
     console.error("Greška pri učitavanju:", error);
     showToast("Greška pri učitavanju podataka", "error");
+  }
+}
+
+function loadGoalsIntoForm() {
+  if (appData.goals.targetDate) {
+    document.getElementById("targetDate").value = appData.goals.targetDate;
+  }
+  if (appData.goals.targetWeight) {
+    document.getElementById("targetWeight").value = appData.goals.targetWeight;
+  }
+  if (appData.goals.monthlyHours) {
+    document.getElementById("monthlyHours").value = appData.goals.monthlyHours;
   }
 }
 
@@ -828,3 +839,204 @@ function showToast(message, type = "success") {
     toast.classList.remove("show");
   }, 3000);
 }
+
+// Firebase Functions
+async function saveFirebaseConfig() {
+  const apiKey = document.getElementById("firebaseApiKey").value.trim();
+  const projectId = document.getElementById("firebaseProjectId").value.trim();
+  const userId = document.getElementById("firebaseUserId").value.trim();
+
+  if (!apiKey || !projectId) {
+    showToast("Molimo unesite API Key i Project ID", "error");
+    return;
+  }
+
+  if (!userId) {
+    showToast("Molimo unesite User ID za sinhronizaciju", "error");
+    return;
+  }
+
+  const config = {
+    apiKey: apiKey,
+    authDomain: `${projectId}.firebaseapp.com`,
+    databaseURL: `https://${projectId}-default-rtdb.firebaseio.com`,
+    projectId: projectId,
+    storageBucket: `${projectId}.appspot.com`,
+    messagingSenderId: "000000000000",
+    appId: "1:000000000000:web:000000000000",
+  };
+
+  try {
+    localStorage.setItem("firebaseConfig", JSON.stringify(config));
+    localStorage.setItem("firebaseUserId", userId);
+
+    showToast(
+      "Firebase konfiguracija sačuvana. Stranica će se osvežiti...",
+      "success"
+    );
+    setTimeout(() => {
+      window.location.reload();
+    }, 1500);
+  } catch (error) {
+    console.error("Greška pri čuvanju Firebase konfiguracije:", error);
+    showToast("Greška pri čuvanju konfiguracije", "error");
+  }
+}
+
+async function saveToFirebase() {
+  if (!window.firebaseReady || !window.firebaseDatabase) {
+    return;
+  }
+
+  try {
+    const { ref, set } = await import(
+      "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"
+    );
+    const userId = localStorage.getItem("firebaseUserId");
+
+    if (!userId) {
+      return;
+    }
+
+    const dataRef = ref(window.firebaseDatabase, `users/${userId}/data`);
+    await set(dataRef, appData);
+    console.log("Podaci sačuvani u Firebase");
+  } catch (error) {
+    console.error("Greška pri čuvanju u Firebase:", error);
+  }
+}
+
+async function loadFromFirebase() {
+  if (!window.firebaseReady || !window.firebaseDatabase) {
+    return;
+  }
+
+  try {
+    const { ref, onValue, get } = await import(
+      "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"
+    );
+    const userId = localStorage.getItem("firebaseUserId");
+
+    if (!userId) {
+      updateFirebaseStatus("User ID nije postavljen", "error");
+      return;
+    }
+
+    const dataRef = ref(window.firebaseDatabase, `users/${userId}/data`);
+
+    const snapshot = await get(dataRef);
+    if (snapshot.exists()) {
+      const firebaseData = snapshot.val();
+
+      if (
+        firebaseData &&
+        firebaseData.workouts &&
+        firebaseData.workouts.length > 0
+      ) {
+        appData = firebaseData;
+        localStorage.setItem("fitnessTrackerData", JSON.stringify(appData));
+        loadGoalsIntoForm();
+        renderCalendar();
+        renderChart();
+        updateFirebaseStatus("Podaci učitani iz cloud-a", "success");
+      }
+    } else {
+      await saveToFirebase();
+      updateFirebaseStatus("Lokalni podaci sačuvani u cloud", "success");
+    }
+
+    onValue(dataRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const firebaseData = snapshot.val();
+        if (firebaseData) {
+          appData = firebaseData;
+          localStorage.setItem("fitnessTrackerData", JSON.stringify(appData));
+          loadGoalsIntoForm();
+          renderCalendar();
+          renderChart();
+          updateFirebaseStatus("Podaci sinhronizovani", "success");
+        }
+      }
+    });
+  } catch (error) {
+    console.error("Greška pri učitavanju iz Firebase:", error);
+    updateFirebaseStatus("Greška pri povezivanju sa cloud-om", "error");
+  }
+}
+
+async function syncWithFirebase() {
+  if (!window.firebaseReady || !window.firebaseDatabase) {
+    showToast(
+      "Firebase nije konfigurisan. Molimo unesite podatke u podešavanjima.",
+      "error"
+    );
+    return;
+  }
+
+  try {
+    showToast("Sinhronizacija u toku...", "success");
+    await loadFromFirebase();
+    showToast("Sinhronizacija završena", "success");
+  } catch (error) {
+    console.error("Greška pri sinhronizaciji:", error);
+    showToast("Greška pri sinhronizaciji", "error");
+  }
+}
+
+function updateFirebaseStatus(message, type) {
+  const statusEl = document.getElementById("firebaseStatus");
+  if (!statusEl) return;
+
+  if (message && type) {
+    statusEl.textContent = message;
+    statusEl.style.background =
+      type === "success" ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)";
+    statusEl.style.color = type === "success" ? "#10b981" : "#ef4444";
+    statusEl.style.border = `1px solid ${
+      type === "success" ? "#10b981" : "#ef4444"
+    }`;
+  }
+
+  const savedConfig = localStorage.getItem("firebaseConfig");
+  const savedUserId = localStorage.getItem("firebaseUserId");
+
+  if (savedConfig) {
+    const config = JSON.parse(savedConfig);
+    const apiKeyInput = document.getElementById("firebaseApiKey");
+    const projectIdInput = document.getElementById("firebaseProjectId");
+    if (apiKeyInput) {
+      apiKeyInput.value = config.apiKey || "";
+    }
+    if (projectIdInput) {
+      projectIdInput.value = config.projectId || "";
+    }
+  }
+
+  if (savedUserId) {
+    const userIdInput = document.getElementById("firebaseUserId");
+    if (userIdInput) {
+      userIdInput.value = savedUserId;
+    }
+  }
+
+  if (window.firebaseReady) {
+    statusEl.textContent = "Firebase povezan ✓";
+    statusEl.style.background = "rgba(16, 185, 129, 0.2)";
+    statusEl.style.color = "#10b981";
+    statusEl.style.border = "1px solid #10b981";
+  } else {
+    statusEl.textContent = "Firebase nije konfigurisan";
+    statusEl.style.background = "rgba(239, 68, 68, 0.2)";
+    statusEl.style.color = "#ef4444";
+    statusEl.style.border = "1px solid #ef4444";
+  }
+}
+
+// Override openSettingsModal da učitava Firebase status
+const originalOpenSettings = openSettingsModal;
+openSettingsModal = function () {
+  originalOpenSettings();
+  setTimeout(() => {
+    updateFirebaseStatus();
+  }, 100);
+};

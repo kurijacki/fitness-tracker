@@ -12,6 +12,36 @@
       rel="stylesheet"
     />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Firebase SDK -->
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+      import { getDatabase } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+      // Inicijalizuj Firebase samo ako je konfiguracija postavljena
+      window.firebaseReady = false;
+      window.firebaseDatabase = null;
+
+      try {
+        const savedConfig = localStorage.getItem("firebaseConfig");
+        if (savedConfig) {
+          const config = JSON.parse(savedConfig);
+          if (
+            config.apiKey &&
+            config.apiKey !== "YOUR_API_KEY" &&
+            config.apiKey.length > 10
+          ) {
+            const firebaseApp = initializeApp(config);
+            const database = getDatabase(firebaseApp);
+            window.firebaseDatabase = database;
+            window.firebaseReady = true;
+            console.log("Firebase inicijalizovan");
+          }
+        }
+      } catch (error) {
+        console.log("Firebase nije konfigurisan:", error);
+        window.firebaseReady = false;
+      }
+    </script>
   </head>
   <body>
     <!-- Header -->
@@ -141,6 +171,67 @@
           </button>
         </div>
 
+        <!-- Firebase Sync -->
+        <div class="settings-section">
+          <h3>Cloud Sinhronizacija (Firebase)</h3>
+          <div class="form-group">
+            <label for="firebaseApiKey">API Key:</label>
+            <input
+              type="text"
+              id="firebaseApiKey"
+              placeholder="Unesite Firebase API Key"
+            />
+          </div>
+          <div class="form-group">
+            <label for="firebaseProjectId">Project ID:</label>
+            <input
+              type="text"
+              id="firebaseProjectId"
+              placeholder="Unesite Firebase Project ID"
+            />
+          </div>
+          <div class="form-group">
+            <label for="firebaseUserId"
+              >User ID (za deljenje između uređaja):</label
+            >
+            <input
+              type="text"
+              id="firebaseUserId"
+              placeholder="npr. moj-id-123"
+            />
+            <small
+              style="
+                color: #94a3b8;
+                font-size: 0.85rem;
+                display: block;
+                margin-top: 0.25rem;
+              "
+            >
+              Koristite isti ID na svim uređajima za sinhronizaciju
+            </small>
+          </div>
+          <button type="button" class="btn btn-primary" id="saveFirebaseBtn">
+            Sačuvaj Firebase podešavanja
+          </button>
+          <button
+            type="button"
+            class="btn btn-secondary"
+            id="syncFirebaseBtn"
+            style="margin-top: 0.5rem"
+          >
+            Sinhronizuj sa cloud-om
+          </button>
+          <div
+            id="firebaseStatus"
+            style="
+              margin-top: 1rem;
+              padding: 0.5rem;
+              border-radius: 4px;
+              font-size: 0.9rem;
+            "
+          ></div>
+        </div>
+
         <!-- Data Management -->
         <div class="settings-section">
           <h3>Upravljanje Podacima</h3>
@@ -165,7 +256,10 @@
 
         <!-- Info -->
         <div class="settings-section">
-          <p class="info-text">ℹ️ Podaci se automatski čuvaju u browseru</p>
+          <p class="info-text">
+            ℹ️ Podaci se automatski čuvaju lokalno. Za sinhronizaciju između
+            uređaja, konfigurišite Firebase.
+          </p>
         </div>
       </div>
     </div>
